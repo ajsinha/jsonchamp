@@ -119,3 +119,45 @@
 - `examples/transformation/flr/customer_layout.json` - JSON layout file
 - `examples/transformation/flr/customer_layout.txt` - Simple text layout file
 - `examples/transformation/flr/customer_mapping.smap` - FLR mapping example
+
+## [1.8.0] - 2026-02-02
+
+### Added
+- **Multi-Format Output Support**: Transform results can now be serialized to JSON, CSV, or XML
+  - New `--output-format` / `-of` flag on all CLI scripts (json, csv, xml)
+  - `CSVSerializer` – flattens nested dicts to dot-notation CSV columns
+  - `XMLSerializer` – converts dicts to well-formed XML with attribute support
+  - `JSONSerializer` – configurable JSON output with wrap/sort options
+  - Convenience functions: `dict_to_csv()`, `dict_to_xml()`, `dict_to_json()`
+
+- **TransformPipeline Class**: Unified read → transform → write pipeline
+  - Supports any combination of input/output formats
+  - `pipeline.run("file.csv")` – file-based execution
+  - `pipeline.run_data(dict_list)` – in-memory execution
+  - `pipeline.run_to_file("input.csv", "output.xml")` – file-to-file
+  - Works with both interpreted and compiled transformers
+
+- **Unified Pipeline CLI**: `transform_pipeline.py`
+  - Single script for any-to-any format transformation
+  - CSV/XML/FLR input with full options
+  - CSV/XML/JSON output with full options
+  - `--compiled` flag for production performance
+
+- **Updated transform_csv.py**: Now supports `--output-format csv|xml|json`
+  - CSV output options: `--out-delimiter`, `--no-out-header`, `--out-columns`
+  - XML output options: `--root-tag`, `--record-tag`, `--no-xml-declaration`
+
+- **Output Serializers Module**: `jsonchamp/transformation/serializers/`
+  - `csv_serializer.py` – nested dict flattening, configurable delimiters
+  - `xml_serializer.py` – attribute support, pretty printing
+  - `json_serializer.py` – wrap key, sort keys, compact mode
+
+### Changed
+- `transform_csv()`, `transform_xml()`, `transform_flr()` now accept
+  `output_format` and `output_options` parameters
+- All format-specific transform functions return native dicts for JSON output
+  or formatted strings for CSV/XML output
+
+### Examples
+- `examples/transformation/multi_format/employees.csv` – multi-format test data
+- `examples/transformation/multi_format/employee_mapping.smap` – mapping example

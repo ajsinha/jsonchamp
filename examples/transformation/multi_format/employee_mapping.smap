@@ -1,0 +1,32 @@
+# Employee Transformation
+# Works with any input format → any output format
+
+@config {
+    null_handling : omit
+}
+
+@aliases {
+    CleanTitle  : trim | titlecase
+    CleanLower  : trim | lowercase
+    ToMoney     : to_float | round(2)
+}
+
+@lookups {
+    dept_codes : {
+        "Engineering" : "ENG",
+        "Marketing"   : "MKT",
+        "Sales"       : "SLS",
+        "HR"          : "HRD"
+    }
+}
+
+# Basic field mappings
+emp_id              : employeeId | to_int
+first_name          : name.first | @CleanTitle
+last_name           : name.last | @CleanTitle
+email               : contact.email | @CleanLower
+department          : department.name
+department          : department.code | lookup(@dept_codes)
+salary              : compensation.annual | @ToMoney
+hire_date           : employment.startDate
+is_active           : employment.active | to_bool

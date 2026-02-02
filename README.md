@@ -1,13 +1,13 @@
-# JsonChamp v1.7.0
+# JsonChamp v1.8.0
 
 ```
 +==============================================================================+
 |                                                                              |
-|                           JsonChamp v1.7.0                                   |
+|                           JsonChamp v1.8.0                                   |
 |                                                                              |
 |            Commercial Grade JSON Schema to Python Code Generator             |
 |                      with SchemaMap Transformation DSL                       |
-|           Supports JSON, CSV, XML, and Fixed Length Record Inputs            |
+|       Supports JSON, CSV, XML, FLR Inputs → JSON, CSV, XML Outputs          |
 |                                                                              |
 |                  Copyright (C) 2025-2030, All Rights Reserved                |
 |                      Ashutosh Sinha (ajsinha@gmail.com)                      |
@@ -42,7 +42,76 @@
 
 ---
 
-## What's New in v1.7.0
+## What's New in v1.8.0
+
+### Multi-Format Output
+
+Transform results can now be serialized to **JSON**, **CSV**, or **XML**:
+
+```bash
+# CSV → JSON (default)
+python transform_csv.py mapping.smap data.csv
+
+# CSV → CSV (re-map columns, rename, compute new fields)
+python transform_csv.py mapping.smap data.csv -of csv -o output.csv
+
+# CSV → XML
+python transform_csv.py mapping.smap data.csv -of xml -o output.xml
+```
+
+**Python API:**
+```python
+from jsonchamp.transformation import transform_csv, dict_to_csv, dict_to_xml
+
+# CSV → JSON (default)
+results = transform_csv("data.csv", "mapping.smap")
+
+# CSV → CSV with output_format
+csv_text = transform_csv("data.csv", "mapping.smap", output_format="csv")
+
+# CSV → XML with custom tags
+xml_text = transform_csv("data.csv", "mapping.smap",
+                         output_format="xml",
+                         output_options={"root_tag": "customers"})
+
+# Convenience: serialize any dict list
+dict_to_csv(results, file_path="out.csv")
+dict_to_xml(results, file_path="out.xml", root_tag="data")
+```
+
+### Transform Pipeline
+
+Unified any-to-any transformation in one call:
+
+```python
+from jsonchamp.transformation import TransformPipeline
+
+# FLR mainframe → XML in one pipeline
+pipeline = TransformPipeline(
+    mapping_file="mapping.smap",
+    input_format="flr",
+    output_format="xml",
+    layout="layout.json",
+    compiled=True  # 5-10x faster
+)
+xml_string = pipeline.run("mainframe.dat")
+pipeline.run_to_file("mainframe.dat", "output.xml")
+```
+
+```bash
+# CLI: any format → any format
+python transform_pipeline.py mapping.smap data.csv -if csv -of xml -o out.xml
+python transform_pipeline.py mapping.smap data.dat -if flr --layout l.json -of csv
+```
+
+### Format Support Matrix
+
+| Input ↓ / Output → | JSON | CSV | XML |
+|---------------------|------|-----|-----|
+| **JSON / Dict**     | ✓    | ✓   | ✓   |
+| **CSV**             | ✓    | ✓   | ✓   |
+| **XML**             | ✓    | ✓   | ✓   |
+| **FLR**             | ✓    | ✓   | ✓   |
 
 ### Fixed Length Record (FLR) Support
 
@@ -256,6 +325,8 @@ python transform.py --benchmark mapping.smap input.json --iterations 10000
 ### Key Features
 
 - **Multi-Format Input**: Transform JSON, CSV, XML, and Fixed Length Record files
+- **Multi-Format Output**: Serialize results to JSON, CSV, or XML
+- **Transform Pipeline**: Unified any-to-any format transformation
 - **90+ Built-in Functions**: String, numeric, date, array transforms
 - **External Python Functions**: Call custom functions from DSL
 - **Aliases**: Define reusable transform chains
@@ -316,6 +387,17 @@ python transform_dict.py mapping.smap --data '{"name": "John"}'
 python transform_dict.py mapping.smap input.json --benchmark
 ```
 
+### Unified Pipeline (Any Format → Any Format)
+
+```bash
+python transform_pipeline.py mapping.smap data.csv -if csv -of json
+python transform_pipeline.py mapping.smap data.csv -if csv -of csv -o out.csv
+python transform_pipeline.py mapping.smap data.csv -if csv -of xml -o out.xml
+python transform_pipeline.py mapping.smap data.dat -if flr --layout layout.json -of csv
+python transform_pipeline.py mapping.smap data.xml -if xml --records "item" -of csv
+python transform_pipeline.py mapping.smap data.csv -if csv -of xml --compiled
+```
+
 ### Compile to Python
 
 ```bash
@@ -349,7 +431,8 @@ jsonchamp/
 │       ├── parser/              # Lexer, parser, AST
 │       ├── engine/              # Transformer, evaluator
 │       ├── compiler/            # Python code generator
-│       └── converters/          # CSV/XML/FLR converters
+│       ├── converters/          # Input: CSV/XML/FLR → JSON
+│       └── serializers/         # Output: JSON → CSV/XML/JSON
 ├── examples/
 │   ├── schemas/                 # 22+ JSON schemas
 │   └── transformation/          # SchemaMap examples
@@ -359,13 +442,14 @@ jsonchamp/
 │       ├── csv/                 # CSV examples
 │       ├── xml/                 # XML examples
 │       ├── flr/                 # Fixed Length Record examples
-│       └── target_schemas/      # Output schemas
+│       └── multi_format/        # Multi-format I/O examples
 ├── docs/                        # Documentation
 ├── transform.py                 # JSON transformation CLI
 ├── transform_csv.py             # CSV transformation CLI
 ├── transform_xml.py             # XML transformation CLI
 ├── transform_flr.py             # FLR transformation CLI
 ├── transform_dict.py            # Dict transformation CLI (compiled support)
+├── transform_pipeline.py        # Unified any-to-any pipeline CLI
 └── README.md
 ```
 

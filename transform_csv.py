@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
-CSV to JSON Transformation Runner
+CSV Transformation Runner
 
 Copyright (C) 2025-2030, All Rights Reserved
 Ashutosh Sinha
 Email: ajsinha@gmail.com
 
 Transform CSV data using SchemaMap DSL.
-Each CSV row is converted to JSON and then transformed using the mapping file.
+Output can be JSON, CSV, or XML.
 
 Usage:
     python transform_csv.py mapping.smap input.csv
-    python transform_csv.py mapping.smap input.csv --output result.json
+    python transform_csv.py mapping.smap input.csv --output-format csv -o result.csv
+    python transform_csv.py mapping.smap input.csv --output-format xml -o result.xml
     python transform_csv.py mapping.smap input.csv --delimiter ";" --no-header
 """
 
@@ -24,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from jsonchamp.transformation import load_mapping, validate_json_schema
 from jsonchamp.transformation.converters import CSVConverter, CSVPresets
+from jsonchamp.transformation.serializers import CSVSerializer, XMLSerializer
 from jsonchamp import __version__
 
 
@@ -33,82 +35,99 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Basic CSV transformation
+  # CSV → JSON (default)
   %(prog)s mapping.smap customers.csv
-  
-  # With output file
-  %(prog)s mapping.smap customers.csv --output transformed.json
-  
+
+  # CSV → CSV (re-map columns, compute fields)
+  %(prog)s mapping.smap customers.csv -of csv -o customers_out.csv
+
+  # CSV → XML
+  %(prog)s mapping.smap customers.csv -of xml -o customers.xml
+
   # Custom delimiter (semicolon)
   %(prog)s mapping.smap data.csv --delimiter ";"
-  
+
   # Tab-separated values
   %(prog)s mapping.smap data.tsv --delimiter "\\t"
-  
-  # CSV without header row
-  %(prog)s mapping.smap data.csv --no-header --columns "id,name,email,age"
-  
+
   # Use preset format
-  %(prog)s mapping.smap data.csv --preset excel
   %(prog)s mapping.smap data.tsv --preset tsv
-  
-  # Skip header rows
-  %(prog)s mapping.smap data.csv --skip-rows 2
-  
-  # Disable type inference (keep all values as strings)
-  %(prog)s mapping.smap data.csv --no-infer-types
-  
-  # With external functions
-  %(prog)s mapping.smap data.csv --functions custom_funcs.py
+
+  # CSV → XML with custom tags
+  %(prog)s mapping.smap data.csv -of xml --root-tag customers --record-tag customer
         """
     )
-    
+
     parser.add_argument("mapping", help="Path to SchemaMap DSL file (.smap)")
     parser.add_argument("input", help="Path to input CSV file")
-    parser.add_argument("--output", "-o", help="Output path for JSON result")
+    parser.add_argument("--output", "-o", help="Output file path")
     parser.add_argument("--functions", "-f", help="Python file with custom functions")
     parser.add_argument("--schema", "-s", help="JSON Schema for output validation")
-    
-    # CSV options
-    csv_group = parser.add_argument_group("CSV Options")
-    csv_group.add_argument("--delimiter", "-d", default=",", 
+
+    # CSV input options
+    csv_group = parser.add_argument_group("CSV Input Options")
+    csv_group.add_argument("--delimiter", "-d", default=",",
                           help="Field delimiter (default: ',')")
     csv_group.add_argument("--quotechar", "-q", default='"',
                           help="Quote character (default: '\"')")
     csv_group.add_argument("--no-header", action="store_true",
                           help="CSV has no header row")
-    csv_group.add_argument("--columns", 
+    csv_group.add_argument("--columns",
                           help="Column names (comma-separated, for --no-header)")
     csv_group.add_argument("--skip-rows", type=int, default=0,
                           help="Skip N rows at start")
     csv_group.add_argument("--encoding", default="utf-8",
                           help="File encoding (default: utf-8)")
     csv_group.add_argument("--no-infer-types", action="store_true",
-                          help="Keep all values as strings (don't infer types)")
+                          help="Keep all values as strings")
     csv_group.add_argument("--no-strip", action="store_true",
                           help="Don't strip whitespace from values")
     csv_group.add_argument("--preset", choices=["excel", "tsv", "pipe", "semicolon"],
                           help="Use preset CSV format")
-    
-    # Output options
-    output_group = parser.add_argument_group("Output Options")
-    output_group.add_argument("--single", action="store_true",
-                             help="Output single object (first row only)")
-    output_group.add_argument("--wrap-array", action="store_true",
-                             help="Wrap output in {\"records\": [...]} object")
-    output_group.add_argument("--pretty", action="store_true", default=True,
-                             help="Pretty-print JSON output (default)")
-    output_group.add_argument("--compact", action="store_true",
-                             help="Compact JSON output (no indentation)")
-    
+
+    # Output format
+    out_fmt = parser.add_argument_group("Output Format")
+    out_fmt.add_argument("--output-format", "-of",
+                         choices=["json", "csv", "xml"], default="json",
+                         help="Output format (default: json)")
+
+    # JSON output options
+    json_out = parser.add_argument_group("JSON Output Options")
+    json_out.add_argument("--single", action="store_true",
+                          help="Output single object (first row only)")
+    json_out.add_argument("--wrap-array", action="store_true",
+                          help="Wrap output in {\"records\": [...]} object")
+    json_out.add_argument("--pretty", action="store_true", default=True,
+                          help="Pretty-print JSON output (default)")
+    json_out.add_argument("--compact", action="store_true",
+                          help="Compact JSON output (no indentation)")
+
+    # CSV output options
+    csv_out = parser.add_argument_group("CSV Output Options")
+    csv_out.add_argument("--out-delimiter", default=",",
+                         help="Output CSV delimiter (default: ',')")
+    csv_out.add_argument("--no-out-header", action="store_true",
+                         help="Omit header row in CSV output")
+    csv_out.add_argument("--out-columns",
+                         help="Explicit output columns (comma-separated)")
+
+    # XML output options
+    xml_out = parser.add_argument_group("XML Output Options")
+    xml_out.add_argument("--root-tag", default="root",
+                         help="XML root element tag (default: 'root')")
+    xml_out.add_argument("--record-tag", default="record",
+                         help="XML record element tag (default: 'record')")
+    xml_out.add_argument("--no-xml-declaration", action="store_true",
+                         help="Omit <?xml?> declaration")
+
     # General options
-    parser.add_argument("--verbose", "-v", action="store_true", 
+    parser.add_argument("--verbose", "-v", action="store_true",
                        help="Verbose output")
     parser.add_argument("--quiet", action="store_true",
                        help="Suppress status messages")
-    parser.add_argument("--version", action="version", 
+    parser.add_argument("--version", action="version",
                        version=f"%(prog)s {__version__}")
-    
+
     args = parser.parse_args()
     
     # Validate files exist
@@ -200,18 +219,42 @@ Examples:
                 if args.verbose:
                     print("✓ Schema validation passed")
         
-        # Output
-        indent = None if args.compact else 2
-        json_output = json.dumps(results, indent=indent, default=str)
-        
+        # Output in requested format
+        out_fmt = args.output_format
+
+        if out_fmt == 'json':
+            indent = None if args.compact else 2
+            output_text = json.dumps(results, indent=indent, default=str)
+        elif out_fmt == 'csv':
+            csv_out_opts = {
+                'delimiter': args.out_delimiter,
+                'include_header': not args.no_out_header,
+            }
+            if args.out_columns:
+                csv_out_opts['columns'] = [c.strip() for c in args.out_columns.split(',')]
+            serializer = CSVSerializer(**csv_out_opts)
+            data_for_csv = results if isinstance(results, list) else [results]
+            output_text = serializer.serialize(data_for_csv)
+        elif out_fmt == 'xml':
+            xml_opts = {
+                'root_tag': args.root_tag,
+                'record_tag': args.record_tag,
+                'xml_declaration': not args.no_xml_declaration,
+            }
+            serializer = XMLSerializer(**xml_opts)
+            data_for_xml = results if isinstance(results, list) else [results]
+            output_text = serializer.serialize(data_for_xml)
+        else:
+            output_text = json.dumps(results, indent=2, default=str)
+
         if args.output:
             with open(args.output, 'w', encoding='utf-8') as f:
-                f.write(json_output)
+                f.write(output_text)
             if not args.quiet:
                 count = len(results) if isinstance(results, list) else 1
-                print(f"✓ Transformed {count} record(s) to: {args.output}")
+                print(f"✓ Transformed {count} record(s) → {out_fmt.upper()}: {args.output}")
         else:
-            print(json_output)
+            print(output_text)
         
         sys.exit(0)
         

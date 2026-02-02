@@ -1,6 +1,6 @@
 # SchemaMap Showcase Examples - Complete Reference Guide
 
-**Version:** 1.7.0  
+**Version:** 1.8.0  
 **Copyright:** © 2025-2030, All Rights Reserved - Ashutosh Sinha (ajsinha@gmail.com)  
 **Last Updated:** January 2026
 

@@ -1,0 +1,6 @@
+emp_id,first_name,last_name,email,department,salary,hire_date,is_active
+1001,John,Doe,john.doe@acme.com,Engineering,95000,2021-03-15,true
+1002,Jane,Smith,jane.smith@acme.com,Marketing,82000,2020-08-22,true
+1003,Bob,Wilson,bob.wilson@acme.com,Engineering,105000,2019-01-10,true
+1004,Alice,Johnson,alice.j@acme.com,Sales,78000,2022-06-01,false
+1005,Charlie,Brown,charlie.b@acme.com,Marketing,88000,2021-11-30,true

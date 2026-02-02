@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog>
+    <product sku="WDG-001" category="widgets">
+        <name>Premium Widget</name>
+        <price>29.99</price>
+        <stock>150</stock>
+        <active>true</active>
+    </product>
+    <product sku="GDG-002" category="gadgets">
+        <name>Super Gadget</name>
+        <price>49.99</price>
+        <stock>75</stock>
+        <active>true</active>
+    </product>
+    <product sku="WDG-003" category="widgets">
+        <name>Basic Widget</name>
+        <price>9.99</price>
+        <stock>500</stock>
+        <active>false</active>
+    </product>
+</catalog>

@@ -1,0 +1,12 @@
+# Flatten nested JSON orders for CSV / XML export
+
+@config {
+    null_handling : default
+}
+
+orderId                : order_id
+customer.name          : customer_name | trim | uppercase
+customer.email         : customer_email | trim | lowercase
+total                  : order_total | to_float | round(2)
+status                 : order_status | uppercase
+itemCount              : item_count | to_int

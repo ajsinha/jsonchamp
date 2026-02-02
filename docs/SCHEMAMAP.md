@@ -1,8 +1,8 @@
 # SchemaMap DSL - Complete Syntax Reference
 
-**Version:** 1.7.0  
+**Version:** 1.8.0  
 **Copyright:** © 2025-2030, All Rights Reserved - Ashutosh Sinha (ajsinha@gmail.com)  
-**Last Updated:** January 2026
+**Last Updated:** February 2026
 
 ---
 
@@ -35,9 +35,11 @@
 14. [XML Transformations](#14-xml-transformations)
 15. [Fixed Length Record (FLR) Transformations](#15-fixed-length-record-flr-transformations)
 16. [Compiled Transformations](#16-compiled-transformations)
-17. [CLI Reference](#17-cli-reference)
-18. [Python API Reference](#18-python-api-reference)
-19. [Syntax Quick Reference Card](#19-syntax-quick-reference-card)
+17. [Output Formats](#17-output-formats)
+18. [Transform Pipeline](#18-transform-pipeline)
+19. [CLI Reference](#19-cli-reference)
+20. [Python API Reference](#20-python-api-reference)
+21. [Syntax Quick Reference Card](#21-syntax-quick-reference-card)
 
 ---
 
@@ -1390,7 +1392,209 @@ python transform_dict.py mapping.smap input.json --benchmark
 
 ---
 
-## 17. CLI Reference
+## 17. Output Formats
+
+SchemaMap can serialize transformation results to JSON, CSV, or XML.
+
+### Output Format Selection
+
+All transform functions and CLI scripts accept `--output-format` (`-of`):
+
+```bash
+# CSV input → JSON output (default)
+python transform_csv.py mapping.smap data.csv
+
+# CSV input → CSV output
+python transform_csv.py mapping.smap data.csv -of csv -o result.csv
+
+# CSV input → XML output
+python transform_csv.py mapping.smap data.csv -of xml -o result.xml
+```
+
+### JSON Output
+
+JSON is the default output format, returning native Python dicts/lists.
+
+| Option | CLI Flag | Default | Description |
+|--------|----------|---------|-------------|
+| `indent` | `--compact` | 2 | Indentation (None if compact) |
+| `sort_keys` | — | False | Sort keys alphabetically |
+| `wrap_key` | `--wrap-key` | None | Wrap list in `{key: [...]}` |
+
+### CSV Output
+
+The CSV serializer flattens nested dicts into dot-notation column headers.
+
+**Nested JSON:**
+```json
+{"contact": {"email": "a@b.com"}, "age": 30}
+```
+
+**Becomes CSV:**
+```
+contact.email,age
+a@b.com,30
+```
+
+| Option | CLI Flag | Default | Description |
+|--------|----------|---------|-------------|
+| `delimiter` | `--out-delimiter` | `,` | Field separator |
+| `include_header` | `--no-out-header` | True | Include header row |
+| `columns` | `--out-columns` | Auto | Explicit column list |
+| `flatten_separator` | `--flatten-sep` | `.` | Nested key separator |
+| `null_value` | — | `""` | String for None values |
+
+### XML Output
+
+The XML serializer converts dicts to well-formed XML elements.
+Keys prefixed with `@` become attributes. The `#text` key becomes text content.
+
+| Option | CLI Flag | Default | Description |
+|--------|----------|---------|-------------|
+| `root_tag` | `--root-tag` | `root` | Root element tag |
+| `record_tag` | `--record-tag` | `record` | Per-record element tag |
+| `attr_prefix` | — | `@` | Prefix for attribute keys |
+| `text_key` | — | `#text` | Key for text content |
+| `xml_declaration` | `--no-xml-declaration` | True | Include `<?xml?>` |
+
+### Python API — Output Serializers
+
+```python
+from jsonchamp.transformation import (
+    CSVSerializer, XMLSerializer, JSONSerializer,
+    dict_to_csv, dict_to_xml, dict_to_json
+)
+
+data = [{"id": 1, "contact": {"email": "a@b.com"}},
+        {"id": 2, "contact": {"email": "c@d.com"}}]
+
+# Convenience functions
+csv_text = dict_to_csv(data)
+xml_text = dict_to_xml(data, root_tag="people", record_tag="person")
+json_text = dict_to_json(data, indent=4)
+
+# Write to file
+dict_to_csv(data, file_path="output.csv", delimiter=";")
+dict_to_xml(data, file_path="output.xml", root_tag="people")
+
+# Full control with serializer classes
+csv_ser = CSVSerializer(delimiter="\t", columns=["id", "contact.email"])
+csv_text = csv_ser.serialize(data)
+csv_ser.serialize_to_file(data, "output.tsv")
+```
+
+### Transform Functions with Output Format
+
+All transform functions (`transform_csv`, `transform_xml`, `transform_flr`)
+accept `output_format` and `output_options`:
+
+```python
+from jsonchamp.transformation import transform_csv
+
+# CSV → JSON (default)
+results = transform_csv("data.csv", "mapping.smap")
+
+# CSV → CSV
+csv_text = transform_csv("data.csv", "mapping.smap",
+                         output_format="csv",
+                         output_options={"delimiter": ";"})
+
+# CSV → XML
+xml_text = transform_csv("data.csv", "mapping.smap",
+                         output_format="xml",
+                         output_options={"root_tag": "customers",
+                                         "record_tag": "customer"})
+```
+
+---
+
+## 18. Transform Pipeline
+
+The `TransformPipeline` class provides an end-to-end interface for reading
+any supported format, transforming it, and writing to any output format.
+
+### Supported Format Matrix
+
+| Input ↓ / Output → | JSON | CSV | XML |
+|---------------------|------|-----|-----|
+| **JSON / Dict**     | ✓    | ✓   | ✓   |
+| **CSV**             | ✓    | ✓   | ✓   |
+| **XML**             | ✓    | ✓   | ✓   |
+| **FLR**             | ✓    | ✓   | ✓   |
+
+### Pipeline Python API
+
+```python
+from jsonchamp.transformation import TransformPipeline
+
+# CSV → XML pipeline
+pipeline = TransformPipeline(
+    mapping_file="mapping.smap",
+    input_format="csv",
+    output_format="xml",
+    output_options={"root_tag": "employees", "record_tag": "employee"}
+)
+
+# Run against a file
+xml_string = pipeline.run("employees.csv")
+
+# Run against in-memory data
+xml_string = pipeline.run_data([{"first": "John"}, {"first": "Jane"}])
+
+# Run and write to file
+pipeline.run_to_file("employees.csv", "employees.xml")
+
+# FLR → CSV pipeline with compiled transformer
+pipeline = TransformPipeline(
+    mapping_file="mapping.smap",
+    input_format="flr",
+    output_format="csv",
+    layout="layout.json",
+    compiled=True   # 5-10x faster
+)
+csv_string = pipeline.run("mainframe.dat")
+```
+
+### Pipeline CLI
+
+```bash
+# CSV → JSON
+python transform_pipeline.py mapping.smap data.csv -if csv
+
+# CSV → CSV (re-map, rename, compute fields)
+python transform_pipeline.py mapping.smap data.csv -if csv -of csv -o output.csv
+
+# CSV → XML
+python transform_pipeline.py mapping.smap data.csv -if csv -of xml -o output.xml
+
+# FLR → CSV
+python transform_pipeline.py mapping.smap data.dat -if flr --layout layout.json -of csv
+
+# XML → CSV
+python transform_pipeline.py mapping.smap orders.xml -if xml --records "order" -of csv
+
+# With compiled transformer
+python transform_pipeline.py mapping.smap data.csv -if csv -of xml --compiled
+```
+
+### Pipeline CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `-if`, `--input-format` | Input format: json, csv, xml, flr |
+| `-of`, `--output-format` | Output format: json, csv, xml |
+| `-o`, `--output` | Output file path |
+| `--delimiter` | CSV input delimiter |
+| `--layout` | FLR layout file |
+| `--records` | XML XPath for batch records |
+| `--root-tag` | XML output root tag |
+| `--record-tag` | XML output record tag |
+| `--out-delimiter` | CSV output delimiter |
+| `--compiled` | Use compiled transformer |
+
+---
+
+## 19. CLI Reference
 
 ### Basic Usage
 
@@ -1444,7 +1648,7 @@ python transform.py --benchmark mapping.smap input.json --iterations 10000
 
 ---
 
-## 18. Python API Reference
+## 20. Python API Reference
 
 ### Quick Transform
 
@@ -1501,7 +1705,7 @@ except TransformError as e:
 
 ---
 
-## 19. Syntax Quick Reference Card
+## 21. Syntax Quick Reference Card
 
 ### Mapping Syntax
 

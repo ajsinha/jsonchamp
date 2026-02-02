@@ -1,0 +1,22 @@
+[
+  {
+    "orderId": "ORD-001",
+    "customer": {
+      "name": "Acme Corp",
+      "email": "orders@acme.com"
+    },
+    "total": 1234.56,
+    "status": "shipped",
+    "itemCount": 3
+  },
+  {
+    "orderId": "ORD-002",
+    "customer": {
+      "name": "Beta Inc",
+      "email": "buy@beta.io"
+    },
+    "total": 567.89,
+    "status": "pending",
+    "itemCount": 1
+  }
+]

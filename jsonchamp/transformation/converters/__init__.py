@@ -31,18 +31,18 @@ from .flr_converter import (
 )
 
 __all__ = [
-    # CSV
+    # CSV Input
     'CSVConverter',
     'CSVPresets',
     'csv_to_json',
-    
-    # XML
+
+    # XML Input
     'XMLConverter',
     'XMLPresets',
     'xml_to_json',
     'xml_to_json_records',
-    
-    # FLR (Fixed Length Record)
+
+    # FLR Input
     'FLRConverter',
     'FLRPresets',
     'RecordLayout',

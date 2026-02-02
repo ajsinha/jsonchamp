@@ -1,0 +1,40 @@
+# Legacy Employee CSV → Modern Employee format
+# Works for CSV-to-CSV, CSV-to-JSON, or CSV-to-XML output
+
+@config {
+    null_handling : omit
+}
+
+@aliases {
+    CleanTitle : trim | titlecase
+    CleanLower : trim | lowercase
+    ToMoney    : to_float | round(2)
+}
+
+@lookups {
+    departments : {
+        "IT"  : "Information Technology",
+        "FIN" : "Finance",
+        "HR"  : "Human Resources",
+        "MKT" : "Marketing",
+        "OPS" : "Operations"
+    }
+    
+    statuses : {
+        "A" : "ACTIVE",
+        "I" : "INACTIVE",
+        "P" : "PROBATION"
+    }
+}
+
+# Identity mapping
+EMP_ID                                  : employeeId
+FIRST_NM + " " + LAST_NM               : fullName | @CleanTitle
+EMAIL_ADDR                              : email | @CleanLower
+DEPT_CD                                 : department | lookup(@departments)
+SALARY_AMT                              : salary | @ToMoney
+STATUS_CD                               : status | lookup(@statuses)
+HIRE_DT                                 : hireDate
+
+# Computed
+@now                                    : processedAt

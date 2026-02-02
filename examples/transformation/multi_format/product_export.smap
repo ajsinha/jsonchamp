@@ -1,0 +1,16 @@
+# Export XML product catalog to flat CSV / JSON
+
+@config {
+    null_handling : omit
+}
+
+@aliases {
+    ToMoney : to_float | round(2)
+}
+
+@sku        : sku
+@category   : category | uppercase
+name        : productName | trim | titlecase
+price       : unitPrice | @ToMoney
+stock       : stockQty | to_int
+active      : isActive
